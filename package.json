@@ -1,0 +1,26 @@
+{
+    "name": "Geocoding",
+    "version": "1.0.0",
+    "description": "Geocodificar direcciones en Bogotá",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron ."
+    },
+    "repository": "https://github.com/felipecanol/geocoding-tool.git",
+    "keywords": [
+        "geocoding",
+        "geocodificar",
+        "masivo",
+        "masive",
+        "geojson"
+    ],
+    "author": "Felipe Cano",
+    "license": "GNU Affero General Public License v3.0",
+    "devDependencies": {
+        "electron": "^7.1.2"
+    },
+    "dependencies": {
+        "bootstrap": "^4.4.1",
+        "electron-menubar": "^1.0.2"
+    }
+}

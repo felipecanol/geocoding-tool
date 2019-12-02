@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css?family=Saira&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="js/leaflet/leaflet.css" />
+
+    <title>Geocoding</title>
+    <style>
+        * {
+            font-family: 'Saira', sans-serif;
+        }
+        
+        .center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 700px;
+        }
+        
+        #map {
+            height: 180px;
+        }
+        
+        #circle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 150px;
+            height: 150px;
+            z-index: 10;
+        }
+        
+        .loader {
+            width: calc(100% - 0px);
+            height: calc(100% - 0px);
+            border: 8px solid #162534;
+            border-top: 8px solid #09f;
+            border-radius: 50%;
+            animation: rotate 5s linear infinite;
+        }
+        
+        @keyframes rotate {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .overlay {
+            position: absolute;
+            left: 0px;
+            top: 0px;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            background: #16253487;
+        }
+        
+        .loading-counter {
+            text-align: center;
+            z-index: 20;
+            font-size: 9px;
+            color: white;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loading" style="display: block;">
+        <div class="overlay">
+        </div>
+        <div id="circle" class="center">
+            <div class="loader">
+                <div class="loader">
+                    <div class="loader">
+                        <div class="loader">
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="center loading-counter"><span id="success">0</span> de <span id="count">0</span></div>
+    </div>
+
+    <div class="container" id="container">
+        <div class="center">
+            <div class="row">
+                <div class="col">
+                    <h1>Geocoding</h1>
+                    <form>
+                        <div class="form-group">
+                            <label for="direccion">Google API Key</label>
+                            <input type="text" value="" class="form-control" id="gapik" aria-describedby="gapikeyHelp">
+                            <small id="gapikeyHelp" class="form-text text-muted">Ingrese una api key de google.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="direccion">Dirección</label>
+                            <input type="text" value="" onchange="document.getElementById('direcciones').value = ''" class="form-control" id="direccion" aria-describedby="direccionHelp">
+                            <small id="direccionHelp" class="form-text text-muted">Ingrese una dirección.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="direccion">Direcciónes en CSV</label>
+                            <input type="file" onchange="onChangeInput(event)" class="form-control" id="direcciones" accept=".csv" aria-describedby="direccionesHelp">
+                            <small id="direccionesHelp" class="form-text text-muted">Ingrese un CSV con direcciones en
+                                la primera columna.</small>
+                        </div>
+                        <div class="btn btn-primary" style="width: 100%;" onclick="run()">Buscar</div>
+                    </form>
+
+                </div>
+                <div class="col">
+                    <div class="card" style="width: 100%">
+                        <div class="card-body" style="">
+                            <div id="map"></div>
+                            <div id="info" style="overflow: auto; height: 330px; font-size: 12px;">
+                                <h5 class="card-title">
+                                    <strong>Dirección: </strong>
+                                    <span id="titulo"></span>
+                                </h5>
+                                <div>
+                                    <strong>Latitud: </strong>
+                                    <span id="lat"></span>
+                                </div>
+                                <div>
+                                    <strong>Longitud: </strong>
+                                    <span id="long"></span>
+                                </div>
+                                <div>
+                                    <strong>Barrio: </strong>
+                                    <span id="barrio"></span>
+                                </div>
+                                <div>
+                                    <strong>Localidad: </strong>
+                                    <span id="localidad"></span>
+                                </div>
+                                <div>
+                                    <strong>Código postal: </strong>
+                                    <span id="codigopostal"></span>
+                                </div>
+                                <div>
+                                    <strong>Más: </strong>
+                                    <span id="mas"></span>
+                                </div>
+                            </div>
+                            <div id="download" style="display: none;margin-top: 50px;">
+                                <div class="btn btn-success" style="width: 100%;" onclick="download()">Descargar resultados
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/leaflet/leaflet.js"></script>
+    <script src="js/turf.min.js"></script>
+    <script src="js/geocoding.js"></script>
+
+</body>
+
+</html>
