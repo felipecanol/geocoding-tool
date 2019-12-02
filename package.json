@@ -3,8 +3,38 @@
     "version": "1.0.0",
     "description": "Geocodificar direcciones en Bogotá",
     "main": "main.js",
+    "build": {
+        "appId": "geocoding-tool",
+        "asar": true,
+        "dmg": {
+            "contents": [{
+                    "x": 110,
+                    "y": 150
+                },
+                {
+                    "x": 240,
+                    "y": 150,
+                    "type": "link",
+                    "path": "/Applications"
+                }
+            ]
+        },
+        "linux": {
+            "target": [
+                "AppImage",
+                "deb"
+            ],
+            "icon": "favicon.ico"
+        },
+        "win": {
+            "target": "NSIS",
+            "icon": "favicon.ico"
+        }
+    },
     "scripts": {
-        "start": "electron ."
+        "start": "electron .",
+        "pack": "electron-builder --dir",
+        "dist": "electron-builder"
     },
     "repository": "https://github.com/felipecanol/geocoding-tool.git",
     "keywords": [
@@ -14,10 +44,11 @@
         "masive",
         "geojson"
     ],
-    "author": "Felipe Cano",
+    "author": "Felipe Cano <felipecanol@gmail.com> (http://felipe.canol.io/)",
     "license": "GNU Affero General Public License v3.0",
     "devDependencies": {
-        "electron": "^7.1.2"
+        "electron": "^7.1.2",
+        "electron-builder": "^21.2.0"
     },
     "dependencies": {
         "bootstrap": "^4.4.1",

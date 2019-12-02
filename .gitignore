@@ -1,2 +1,4 @@
 node_modules
 geojson/*.json
+*.tgz
+dist
