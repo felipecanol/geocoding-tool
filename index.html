@@ -26,7 +26,7 @@
         }
         
         #map {
-            height: 180px;
+            height: 100vh;
         }
         
         #circle {
@@ -46,6 +46,7 @@
             border-top: 8px solid #09f;
             border-radius: 50%;
             animation: rotate 5s linear infinite;
+            z-index: 20200;
         }
         
         @keyframes rotate {
@@ -60,13 +61,13 @@
             top: 0px;
             width: 100%;
             height: 100%;
-            z-index: 2;
+            z-index: 20000;
             background: #16253487;
         }
         
         .loading-counter {
             text-align: center;
-            z-index: 20;
+            z-index: 20200;
             font-size: 9px;
             color: white;
             font-weight: bold;
@@ -92,73 +93,75 @@
         <div class="center loading-counter"><span id="success">0</span> de <span id="count">0</span></div>
     </div>
 
-    <div class="container" id="container">
-        <div class="center">
-            <div class="row">
-                <div class="col">
-                    <h1>Geocoding</h1>
-                    <form>
-                        <div class="form-group">
-                            <label for="direccion">Google API Key</label>
-                            <input type="text" value="" class="form-control" id="gapik" aria-describedby="gapikeyHelp">
-                            <small id="gapikeyHelp" class="form-text text-muted">Ingrese una api key de google.</small>
-                        </div>
-                        <div class="form-group">
-                            <label for="direccion">Dirección</label>
-                            <input type="text" value="" onchange="document.getElementById('direcciones').value = ''" class="form-control" id="direccion" aria-describedby="direccionHelp">
-                            <small id="direccionHelp" class="form-text text-muted">Ingrese una dirección.</small>
-                        </div>
-                        <div class="form-group">
-                            <label for="direccion">Direcciónes en CSV</label>
-                            <input type="file" onchange="onChangeInput(event)" class="form-control" id="direcciones" accept=".csv" aria-describedby="direccionesHelp">
-                            <small id="direccionesHelp" class="form-text text-muted">Ingrese un CSV con direcciones en
-                                la primera columna.</small>
-                        </div>
-                        <div class="btn btn-primary" style="width: 100%;" onclick="run()">Buscar</div>
-                    </form>
-
-                </div>
-                <div class="col">
-                    <div class="card" style="width: 100%">
-                        <div class="card-body" style="">
-                            <div id="map"></div>
-                            <div id="info" style="overflow: auto; height: 330px; font-size: 12px;">
-                                <h5 class="card-title">
-                                    <strong>Dirección: </strong>
-                                    <span id="titulo"></span>
-                                </h5>
-                                <div>
-                                    <strong>Latitud: </strong>
-                                    <span id="lat"></span>
+    <div class="container-fluid" id="container">
+        <div class="row">
+            <div class="col-4">
+                <h1>Geocoding</h1>
+                <form>
+                    <div class="form-group">
+                        <label for="direccion">Google API Key</label>
+                        <input type="text" value="" class="form-control" id="gapik" aria-describedby="gapikeyHelp">
+                        <small id="gapikeyHelp" class="form-text text-muted">Ingrese una api key de google.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="direccion">Dirección</label>
+                        <input type="text" value="" onchange="document.getElementById('direcciones').value = ''" class="form-control" id="direccion" aria-describedby="direccionHelp">
+                        <small id="direccionHelp" class="form-text text-muted">Ingrese una dirección.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="direccion">Direcciónes en CSV</label>
+                        <input type="file" onchange="onChangeInput(event)" class="form-control" id="direcciones" accept=".csv" aria-describedby="direccionesHelp">
+                        <small id="direccionesHelp" class="form-text text-muted">Ingrese un CSV con direcciones en
+                            la primera columna.</small>
+                    </div>
+                    <div class="btn btn-primary" style="width: 100%;" onclick="run()">Buscar</div>
+                </form>
+                <br />
+                <div class="card">
+                    <div class="card-body" style="">
+                        <div id="info" style="font-size: 12px;">
+                            <h5 class="card-title">
+                                <strong>Dirección: </strong>
+                                <span id="titulo"></span>
+                            </h5>
+                            <div class="row">
+                                <div class="col">
+                                    <div>
+                                        <strong>Latitud: </strong>
+                                        <span id="lat"></span>
+                                    </div>
+                                    <div>
+                                        <strong>Longitud: </strong>
+                                        <span id="long"></span>
+                                    </div>
+                                    <div>
+                                        <strong>Barrio: </strong>
+                                        <span id="barrio"></span>
+                                    </div>
+                                    <div>
+                                        <strong>Localidad: </strong>
+                                        <span id="localidad"></span>
+                                    </div>
+                                    <div>
+                                        <strong>Código postal: </strong>
+                                        <span id="codigopostal"></span>
+                                    </div>
                                 </div>
-                                <div>
-                                    <strong>Longitud: </strong>
-                                    <span id="long"></span>
-                                </div>
-                                <div>
-                                    <strong>Barrio: </strong>
-                                    <span id="barrio"></span>
-                                </div>
-                                <div>
-                                    <strong>Localidad: </strong>
-                                    <span id="localidad"></span>
-                                </div>
-                                <div>
-                                    <strong>Código postal: </strong>
-                                    <span id="codigopostal"></span>
-                                </div>
-                                <div>
+                                <div class="col" style="height: 100%; overflow: auto;">
                                     <strong>Más: </strong>
                                     <span id="mas"></span>
                                 </div>
                             </div>
-                            <div id="download" style="display: none;margin-top: 50px;">
-                                <div class="btn btn-success" style="width: 100%;" onclick="download()">Descargar resultados
-                                </div>
+                        </div>
+                        <div id="download" style="display: none;margin-top: 50px;">
+                            <div class="btn btn-success" style="width: 100%;" onclick="download()">Descargar resultados
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
+            <div class="col-8">
+                <div id="map"></div>
             </div>
         </div>
     </div>

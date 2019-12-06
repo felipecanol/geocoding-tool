@@ -20,9 +20,13 @@ function intersect(geojson, lat, lng) {
             "coordinates": [lng, lat]
         }
     };
+    return intersectFeature(geojson, point);
+}
+
+function intersectFeature(geojson, geojson2) {
     for (let obj of geojson.features) {
         try {
-            if (turf.intersect(obj, point) != null) {
+            if (turf.intersect(obj, geojson2) != null) {
                 return obj;
             }
         } catch (e) {}
@@ -41,29 +45,17 @@ function checkGeojsons() {
                 geojsons.push(gjson);
             } catch (e) {}
         }
-        map = L.map('map').setView([4.809156, -74.187403], 13);
+        map = L.map('map').setView([4.710988599999999, -74.072092], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
         }).addTo(map);
-        /*
-        // Draw GeoJsons
-        for (let geojson of geojsons) {
-            L.geoJSON(geojson, {
-                style: function(feature) {
-                    return { color: '#3b3b3b' };
-                }
-            }).bindPopup(function(layer) {
-                return layer.feature.properties.ESTRATO;
-            }).addTo(map);
-        }
-        */
         loading(false);
     });
 }
 
 function getCoords(btaAddress) {
-    const adr = encodeURI(btaAddress.replace(/\"|\#/gi, '').trim());
+    const adr = encodeURI(btaAddress.toUpperCase().replace(/\"|\#|\-/gi, ' ').replace(/(\s)([A-Z])(\s)/gi, '$2$3').trim());
     const url = urlApiG + '?address=' + adr + ',bogotá&components=locality:bogota|country:CO&key=' + gkey;
     return promise = new Promise(function(resolve, reject) {
         const xhttp = new XMLHttpRequest();
@@ -78,7 +70,9 @@ function getCoords(btaAddress) {
                 neighborhood = '';
                 sublocality = '';
                 postalcode = '';
+                let exdata = {};
                 if (data.status == 'OK' && data.results.length > 0) {
+                    console.log(data.results);
                     coord = data.results[0].geometry.location;
                     address = data.results[0].formatted_address;
                     for (let d of data.results[0].address_components) {
@@ -92,15 +86,27 @@ function getCoords(btaAddress) {
                             postalcode = d.long_name;
                         }
                     }
+                    for (let geojson of geojsons) {
+                        exdata = intersect(geojson, coord.lat, coord.lng);
+                        console.log('Primer intento:', exdata);
+
+                        if (exdata == null) {
+                            let buffered = turf.buffer(turf.point([coord.lng, coord.lat]), 0.05, { units: 'kilometers' });
+                            exdata = intersectFeature(geojson, buffered);
+                            console.log('Segundo intento:', exdata);
+                            if (exdata !== null) {
+                                drawGeoJSON(buffered);
+                            }
+                        }
+                        if (exdata != null) {
+                            drawGeoJSON(exdata);
+                        }
+                    }
+                    let marker = L.marker({ lon: coord.lng, lat: coord.lat }).bindPopup(address).addTo(map);
+                    map.setView([coord.lat, coord.lng], 16);
+                    markers.push(marker);
                 }
 
-                let exdata = {};
-                for (let geojson of geojsons) {
-                    exdata = intersect(geojson, coord.lat, coord.lng);
-                }
-                let marker = L.marker({ lon: coord.lng, lat: coord.lat }).bindPopup(address).addTo(map);
-                map.setView([coord.lat, coord.lng], 16);
-                markers.push(marker);
                 success++;
                 updateLoading();
                 resolve({
@@ -118,6 +124,15 @@ function getCoords(btaAddress) {
         xhttp.open("GET", url, true);
         xhttp.send();
     });
+}
+
+function drawGeoJSON(json) {
+    let feature = L.geoJSON(json, {
+        style: function(feature) {
+            return { color: '#3b3b3b' };
+        }
+    }).addTo(map);
+    markers.push(feature);
 }
 
 function setResponse(titulo, lat, long, barrio, localidad, codigopostal, mas) {
