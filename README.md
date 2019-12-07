@@ -2,6 +2,12 @@
 
 <img src='https://raw.githubusercontent.com/felipecanol/geocoding-tool/master/demo.png' />
 
+## Download
+
+<a href="https://github.com/felipecanol/geocoding-tool/releases">Release</a>
+
+## Compile
+
 ```bash
 # Clone this repository
 git clone https://github.com/felipecanol/geocoding-tool.git
