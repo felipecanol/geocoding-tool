@@ -1,5 +1,7 @@
 # Geocoding Tool
 
+<img src='https://raw.githubusercontent.com/felipecanol/geocoding-tool/master/demo.png' />
+
 ```bash
 # Clone this repository
 git clone https://github.com/felipecanol/geocoding-tool.git
