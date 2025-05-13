@@ -47,11 +47,10 @@
     "author": "Felipe Cano <felipecanol@gmail.com> (http://felipe.canol.io/)",
     "license": "GNU Affero General Public License v3.0",
     "devDependencies": {
-        "electron": "^7.1.2",
-        "electron-builder": "^21.2.0"
+        "electron": "^29.1.0",
+        "electron-builder": "^24.13.3"
     },
     "dependencies": {
-        "bootstrap": "^4.4.1",
-        "electron-menubar": "^1.0.2"
+        "bootstrap": "^5.2.3"
     }
 }

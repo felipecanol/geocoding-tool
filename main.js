@@ -15,13 +15,14 @@ function createWindow() {
     // Create the browser window.
     mainWindow = new BrowserWindow({
         titleBarStyle: 'hidden',
-        width: 700,
-        height: 500,
+        width: 1200,
+        height: 800,
         backgroundColor: '#ffffff',
-        modal: true,
         icon: path.join(__dirname, 'favicon.png'),
         webPreferences: {
-            nodeIntegration: true
+            nodeIntegration: false,
+            contextIsolation: true,
+            preload: path.join(__dirname, 'preload.js')
         }
     });
     mainWindow.setMenu(null);
@@ -34,8 +35,10 @@ function createWindow() {
     // and load the index.html of the app.
     mainWindow.loadFile('index.html');
 
-    // Open the DevTools.
-    //mainWindow.webContents.openDevTools();
+    // Development tools
+    if (process.env.NODE_ENV === 'development') {
+        mainWindow.webContents.openDevTools();
+    }
 
     // Emitted when the window is closed.
     mainWindow.on('closed', function() {
@@ -45,22 +48,35 @@ function createWindow() {
         mainWindow = null;
     });
 
-    ipcMain.on('getGeojsonFiles', (evt) => {
-        fs.readdir(dirGeojson, function(err, files) {
-            //handling error
-            if (err) {
-                return console.log('Unable to scan directory: ' + err);
-            }
-            evt.sender.send('getGeojsonFiles-response', { files });
-        });
+    // IPC handlers
+    ipcMain.handle('getGeojsonFiles', async () => {
+        try {
+            const files = await fs.promises.readdir(dirGeojson);
+            return { files };
+        } catch (err) {
+            console.error('Error reading directory:', err);
+            throw new Error('Unable to scan directory');
+        }
     });
 
+    ipcMain.handle('saveGeocodingResults', async (event, data) => {
+        try {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `geocoding-results-${timestamp}.json`;
+            const filepath = path.join(dirGeojson, filename);
+            await fs.promises.writeFile(filepath, JSON.stringify(data, null, 2));
+            return { success: true, filename };
+        } catch (err) {
+            console.error('Error saving results:', err);
+            throw new Error('Unable to save results');
+        }
+    });
 }
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', createWindow);
+app.whenReady().then(createWindow);
 
 // Quit when all windows are closed.
 app.on('window-all-closed', function() {

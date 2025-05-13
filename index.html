@@ -1,18 +1,24 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
     <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://*.tile.osm.org; connect-src 'self' https://*.tile.openstreetmap.org https://*.tile.osm.org https://maps.googleapis.com">
 
     <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css?family=Saira&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="js/leaflet/leaflet.css" />
+    <link rel="stylesheet" href="js/leaflet/leaflet.css">
 
-    <title>Geocoding</title>
+    <title>Geocoding Tool</title>
     <style>
+        :root {
+            --primary-color: #162534;
+            --secondary-color: #09f;
+        }
+
         * {
             font-family: 'Saira', sans-serif;
         }
@@ -27,9 +33,11 @@
         
         #map {
             height: 100vh;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
-        #circle {
+        .loader-container {
             position: absolute;
             top: 50%;
             left: 50%;
@@ -40,127 +48,169 @@
         }
         
         .loader {
-            width: calc(100% - 0px);
-            height: calc(100% - 0px);
-            border: 8px solid #162534;
-            border-top: 8px solid #09f;
+            width: 100%;
+            height: 100%;
+            border: 8px solid var(--primary-color);
+            border-top: 8px solid var(--secondary-color);
             border-radius: 50%;
-            animation: rotate 5s linear infinite;
-            z-index: 20200;
+            animation: rotate 1s linear infinite;
         }
         
         @keyframes rotate {
-            100% {
-                transform: rotate(360deg);
-            }
+            100% { transform: rotate(360deg); }
         }
         
         .overlay {
             position: absolute;
-            left: 0px;
-            top: 0px;
+            left: 0;
+            top: 0;
             width: 100%;
             height: 100%;
             z-index: 20000;
-            background: #16253487;
+            background: rgba(22, 37, 52, 0.87);
+            backdrop-filter: blur(4px);
         }
         
         .loading-counter {
             text-align: center;
             z-index: 20200;
-            font-size: 9px;
+            font-size: 14px;
             color: white;
             font-weight: bold;
+            margin-top: 20px;
+        }
+
+        .card {
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .form-control {
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+        }
+
+        .btn {
+            border-radius: 4px;
+            padding: 8px 16px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+
+        #info {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .progress {
+            height: 4px;
+            margin-top: 10px;
+            display: none;
         }
     </style>
 </head>
 
 <body>
-    <div id="loading" style="display: block;">
-        <div class="overlay">
+    <div id="loading" style="display: none;">
+        <div class="overlay"></div>
+        <div class="loader-container">
+            <div class="loader"></div>
         </div>
-        <div id="circle" class="center">
-            <div class="loader">
-                <div class="loader">
-                    <div class="loader">
-                        <div class="loader">
-
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="center loading-counter">
+            <span id="success">0</span> de <span id="count">0</span>
         </div>
-        <div class="center loading-counter"><span id="success">0</span> de <span id="count">0</span></div>
     </div>
 
     <div class="container-fluid" id="container">
         <div class="row">
-            <div class="col-4">
-                <h1>Geocoding</h1>
-                <form>
-                    <div class="form-group">
-                        <label for="direccion">Google API Key</label>
-                        <input type="text" value="" class="form-control" id="gapik" aria-describedby="gapikeyHelp">
-                        <small id="gapikeyHelp" class="form-text text-muted">Ingrese una api key de google.</small>
+            <div class="col-4 p-4">
+                <h1 class="mb-4">Geocoding Tool</h1>
+                <form id="geocodingForm" novalidate>
+                    <div class="form-group mb-3">
+                        <label for="gapik">Google API Key</label>
+                        <input type="password" class="form-control" id="gapik" required>
+                        <div class="error-message" id="gapikError"></div>
+                        <small class="form-text text-muted">Enter your Google API key</small>
                     </div>
-                    <div class="form-group">
-                        <label for="direccion">Dirección</label>
-                        <input type="text" value="" onchange="document.getElementById('direcciones').value = ''" class="form-control" id="direccion" aria-describedby="direccionHelp">
-                        <small id="direccionHelp" class="form-text text-muted">Ingrese una dirección.</small>
+                    <div class="form-group mb-3">
+                        <label for="direccion">Single Address</label>
+                        <input type="text" class="form-control" id="direccion">
+                        <div class="error-message" id="direccionError"></div>
+                        <small class="form-text text-muted">Enter a single address to geocode</small>
                     </div>
-                    <div class="form-group">
-                        <label for="direccion">Direcciónes en CSV</label>
-                        <input type="file" onchange="onChangeInput(event)" class="form-control" id="direcciones" accept=".csv" aria-describedby="direccionesHelp">
-                        <small id="direccionesHelp" class="form-text text-muted">Ingrese un CSV con direcciones en
-                            la primera columna.</small>
+                    <div class="form-group mb-3">
+                        <label for="direcciones">Addresses CSV</label>
+                        <input type="file" class="form-control" id="direcciones" accept=".csv">
+                        <div class="error-message" id="direccionesError"></div>
+                        <small class="form-text text-muted">Upload a CSV file with addresses in the first column</small>
                     </div>
-                    <div class="btn btn-primary" style="width: 100%;" onclick="run()">Buscar</div>
+                    <button type="submit" class="btn btn-primary w-100 mb-3">Process</button>
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                    </div>
                 </form>
-                <br />
+
                 <div class="card">
-                    <div class="card-body" style="">
-                        <div id="info" style="font-size: 12px;">
+                    <div class="card-body">
+                        <div id="info">
                             <h5 class="card-title">
-                                <strong>Dirección: </strong>
+                                <strong>Address: </strong>
                                 <span id="titulo"></span>
                             </h5>
                             <div class="row">
                                 <div class="col">
                                     <div>
-                                        <strong>Latitud: </strong>
+                                        <strong>Latitude: </strong>
                                         <span id="lat"></span>
                                     </div>
                                     <div>
-                                        <strong>Longitud: </strong>
+                                        <strong>Longitude: </strong>
                                         <span id="long"></span>
                                     </div>
                                     <div>
-                                        <strong>Barrio: </strong>
+                                        <strong>Neighborhood: </strong>
                                         <span id="barrio"></span>
                                     </div>
                                     <div>
-                                        <strong>Localidad: </strong>
+                                        <strong>Locality: </strong>
                                         <span id="localidad"></span>
                                     </div>
                                     <div>
-                                        <strong>Código postal: </strong>
+                                        <strong>Postal Code: </strong>
                                         <span id="codigopostal"></span>
                                     </div>
                                 </div>
                                 <div class="col" style="height: 100%; overflow: auto;">
-                                    <strong>Más: </strong>
+                                    <strong>Additional Info: </strong>
                                     <span id="mas"></span>
                                 </div>
                             </div>
                         </div>
-                        <div id="download" style="display: none;margin-top: 50px;">
-                            <div class="btn btn-success" style="width: 100%;" onclick="download()">Descargar resultados
-                            </div>
+                        <div id="download" style="display: none; margin-top: 20px;">
+                            <button class="btn btn-success w-100" onclick="download()">Download Results</button>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-8">
+            <div class="col-8 p-0">
                 <div id="map"></div>
             </div>
         </div>
@@ -169,7 +219,6 @@
     <script src="js/leaflet/leaflet.js"></script>
     <script src="js/turf.min.js"></script>
     <script src="js/geocoding.js"></script>
-
 </body>
 
 </html>

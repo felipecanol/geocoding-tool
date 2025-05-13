@@ -1,15 +1,64 @@
-const { ipcRenderer } = require('electron');
-
 let gkey = '';
 const urlApiG = 'https://maps.googleapis.com/maps/api/geocode/json';
 
 const geojsons = []; // List of geojson files
-let map = null;
+let map = L.map('map').setView([4.6097, -74.0817], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
 let dirs = []; // List of addresses
 let markers = [];
 let values = [];
 let count = 0;
 let success = 0;
+
+// State management
+let state = {
+    apiKey: '',
+    addresses: [],
+    results: [],
+    currentIndex: 0,
+    isProcessing: false,
+    geojsons: [] // List of geojson files
+};
+
+// DOM Elements
+const form = document.getElementById('geocodingForm');
+const apiKeyInput = document.getElementById('gapik');
+const singleAddressInput = document.getElementById('direccion');
+const csvFileInput = document.getElementById('direcciones');
+const loadingElement = document.getElementById('loading');
+const successCounter = document.getElementById('success');
+const totalCounter = document.getElementById('count');
+const progressBar = document.querySelector('.progress-bar');
+const progressContainer = document.querySelector('.progress');
+
+// Event Listeners
+form.addEventListener('submit', handleSubmit);
+singleAddressInput.addEventListener('input', () => {
+    csvFileInput.value = '';
+    csvFileInput.dispatchEvent(new Event('change'));
+});
+csvFileInput.addEventListener('change', handleFileSelect);
+
+// Load GeoJSON files
+async function loadGeojsonFiles() {
+    try {
+        const result = await window.api.getGeojsonFiles();
+        for (const file of result.files) {
+            try {
+                const response = await fetch(`geojson/${file}`);
+                const geojson = await response.json();
+                state.geojsons.push(geojson);
+            } catch (e) {
+                console.error(`Error loading GeoJSON file ${file}:`, e);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading GeoJSON files:', error);
+    }
+}
 
 function intersect(geojson, lat, lng) {
     const point = {
@@ -29,29 +78,11 @@ function intersectFeature(geojson, geojson2) {
             if (turf.intersect(obj, geojson2) != null) {
                 return obj;
             }
-        } catch (e) {}
+        } catch (e) {
+            console.error('Error in intersectFeature:', e);
+        }
     }
     return null;
-}
-
-function checkGeojsons() {
-    updateLoading();
-    loading(true);
-    ipcRenderer.send('getGeojsonFiles');
-    ipcRenderer.on('getGeojsonFiles-response', (event, result) => {
-        for (let f of result.files) {
-            try {
-                let gjson = require('./geojson/' + f);
-                geojsons.push(gjson);
-            } catch (e) {}
-        }
-        map = L.map('map').setView([4.710988599999999, -74.072092], 12);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-        }).addTo(map);
-        loading(false);
-    });
 }
 
 function getCoords(btaAddress) {
@@ -86,7 +117,7 @@ function getCoords(btaAddress) {
                             postalcode = d.long_name;
                         }
                     }
-                    for (let geojson of geojsons) {
+                    for (let geojson of state.geojsons) {
                         exdata = intersect(geojson, coord.lat, coord.lng);
                         console.log('Primer intento:', exdata);
 
@@ -221,7 +252,6 @@ function showInfo(show) {
     }
 }
 
-
 function onChangeInput(e) {
     document.getElementById('direccion').value = '';
     const files = e.target.files;
@@ -306,4 +336,261 @@ function download() {
     export_to_csv('result.csv');
 }
 
-window.onload = checkGeojsons;
+// Form validation
+function validateForm() {
+    let isValid = true;
+    const apiKey = apiKeyInput.value.trim();
+    const singleAddress = singleAddressInput.value.trim();
+    const csvFile = csvFileInput.files[0];
+
+    if (!apiKey) {
+        showError('gapikError', 'API key is required');
+        isValid = false;
+    } else {
+        hideError('gapikError');
+    }
+
+    if (!singleAddress && !csvFile) {
+        showError('direccionError', 'Either single address or CSV file is required');
+        showError('direccionesError', 'Either single address or CSV file is required');
+        isValid = false;
+    } else {
+        hideError('direccionError');
+        hideError('direccionesError');
+    }
+
+    return isValid;
+}
+
+function showError(elementId, message) {
+    const errorElement = document.getElementById(elementId);
+    errorElement.textContent = message;
+    errorElement.style.display = 'block';
+}
+
+function hideError(elementId) {
+    const errorElement = document.getElementById(elementId);
+    errorElement.style.display = 'none';
+}
+
+// File handling
+async function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (file) {
+        try {
+            const text = await file.text();
+            state.addresses = text.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+            singleAddressInput.value = '';
+            hideError('direccionesError');
+        } catch (error) {
+            showError('direccionesError', 'Error reading CSV file');
+            console.error('Error reading file:', error);
+        }
+    }
+}
+
+// Form submission
+async function handleSubmit(event) {
+    event.preventDefault();
+    
+    if (!validateForm()) {
+        return;
+    }
+
+    state.apiKey = apiKeyInput.value.trim();
+    state.results = [];
+    state.currentIndex = 0;
+    state.isProcessing = true;
+
+    if (singleAddressInput.value.trim()) {
+        state.addresses = [singleAddressInput.value.trim()];
+    }
+
+    showLoading();
+    try {
+        await processAddresses();
+    } catch (error) {
+        console.error('Error processing addresses:', error);
+        alert(`Error: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+
+// Geocoding process
+async function processAddresses() {
+    const total = state.addresses.length;
+    totalCounter.textContent = total;
+    progressContainer.style.display = 'block';
+
+    for (let i = 0; i < total; i++) {
+        if (!state.isProcessing) break;
+
+        state.currentIndex = i;
+        const address = state.addresses[i];
+        
+        try {
+            const result = await geocodeAddress(address);
+            state.results.push(result);
+            updateProgress(i + 1, total);
+            updateMap(result);
+            updateInfo(result);
+        } catch (error) {
+            console.error(`Error geocoding address "${address}":`, error);
+            state.results.push({ 
+                address, 
+                error: error.message,
+                status: 'error'
+            });
+        }
+    }
+
+    showDownloadButton();
+}
+
+// Geocoding function
+async function geocodeAddress(address) {
+    try {
+        const encodedAddress = encodeURIComponent(address + ', Bogotá, Colombia');
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${state.apiKey}`;
+        
+        console.log('Geocoding URL:', url);
+        
+        const response = await fetch(url);
+        const data = await response.json();
+
+        console.log('Geocoding response:', data);
+
+        if (data.status === 'ZERO_RESULTS') {
+            throw new Error('No results found for this address');
+        }
+        
+        if (data.status === 'OVER_QUERY_LIMIT') {
+            throw new Error('Google API quota exceeded. Please try again later.');
+        }
+        
+        if (data.status === 'REQUEST_DENIED') {
+            throw new Error('Invalid API key or API key not authorized');
+        }
+        
+        if (data.status === 'INVALID_REQUEST') {
+            throw new Error('Invalid address format');
+        }
+        
+        if (data.status !== 'OK') {
+            throw new Error(`Geocoding failed: ${data.status} - ${data.error_message || 'Unknown error'}`);
+        }
+
+        const result = data.results[0];
+        const location = result.geometry.location;
+
+        // Check intersections with GeoJSON files
+        let intersectionData = null;
+        for (const geojson of state.geojsons) {
+            const intersection = intersect(geojson, location.lat, location.lng);
+            if (intersection) {
+                intersectionData = intersection.properties;
+                break;
+            }
+        }
+
+        // Extract address components
+        const components = {};
+        for (const component of result.address_components) {
+            for (const type of component.types) {
+                components[type] = component.long_name;
+            }
+        }
+
+        return {
+            address,
+            location: result.geometry.location,
+            formatted_address: result.formatted_address,
+            components,
+            place_id: result.place_id,
+            intersection_data: intersectionData,
+            raw_response: data // Include raw response for debugging
+        };
+    } catch (error) {
+        console.error('Geocoding error details:', error);
+        throw error;
+    }
+}
+
+// UI updates
+function showLoading() {
+    loadingElement.style.display = 'block';
+    state.isProcessing = true;
+}
+
+function hideLoading() {
+    loadingElement.style.display = 'none';
+    state.isProcessing = false;
+}
+
+function updateProgress(current, total) {
+    const percentage = (current / total) * 100;
+    progressBar.style.width = `${percentage}%`;
+    successCounter.textContent = current;
+}
+
+function updateMap(result) {
+    const { lat, lng } = result.location;
+    L.marker([lat, lng])
+        .bindPopup(result.formatted_address)
+        .addTo(map);
+    map.setView([lat, lng], 13);
+}
+
+function showDownloadButton() {
+    document.getElementById('download').style.display = 'block';
+}
+
+// Update info panel with geocoding results
+function updateInfo(result) {
+    if (result.error) {
+        document.getElementById('titulo').textContent = 'Error';
+        document.getElementById('lat').textContent = 'N/A';
+        document.getElementById('long').textContent = 'N/A';
+        document.getElementById('barrio').textContent = 'N/A';
+        document.getElementById('localidad').textContent = 'N/A';
+        document.getElementById('codigopostal').textContent = 'N/A';
+        document.getElementById('mas').textContent = result.error;
+        return;
+    }
+
+    document.getElementById('titulo').textContent = result.formatted_address;
+    document.getElementById('lat').textContent = result.location.lat;
+    document.getElementById('long').textContent = result.location.lng;
+    document.getElementById('barrio').textContent = result.components.neighborhood || 'N/A';
+    document.getElementById('localidad').textContent = result.components.sublocality || 'N/A';
+    document.getElementById('codigopostal').textContent = result.components.postal_code || 'N/A';
+    
+    let additionalInfo = '';
+    if (result.intersection_data) {
+        additionalInfo += '<h6>Intersection Data:</h6>';
+        for (const [key, value] of Object.entries(result.intersection_data)) {
+            additionalInfo += `<div><strong>${key}:</strong> ${value}</div>`;
+        }
+    }
+    document.getElementById('mas').innerHTML = additionalInfo || 'No additional data';
+}
+
+// Initialize the application
+window.onload = async function() {
+    // Clear any existing map layers
+    map.eachLayer((layer) => {
+        map.removeLayer(layer);
+    });
+    
+    // Reinitialize the map
+    map.setView([4.6097, -74.0817], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Load GeoJSON files
+    await loadGeojsonFiles();
+};
