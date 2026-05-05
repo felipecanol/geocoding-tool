@@ -47,6 +47,9 @@
     ],
     "author": "Felipe Cano <felipecanol@gmail.com> (http://felipe.canol.io/)",
     "license": "GNU Affero General Public License v3.0",
+    "engines": {
+        "node": ">=22.12.0"
+    },
     "devDependencies": {
         "electron": "^41.5.0",
         "electron-builder": "^26.8.1"
