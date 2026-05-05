@@ -7,7 +7,8 @@
         "appId": "geocoding-tool",
         "asar": true,
         "dmg": {
-            "contents": [{
+            "contents": [
+                {
                     "x": 110,
                     "y": 150
                 },
@@ -47,10 +48,10 @@
     "author": "Felipe Cano <felipecanol@gmail.com> (http://felipe.canol.io/)",
     "license": "GNU Affero General Public License v3.0",
     "devDependencies": {
-        "electron": "^29.1.0",
-        "electron-builder": "^24.13.3"
+        "electron": "^41.5.0",
+        "electron-builder": "^26.8.1"
     },
     "dependencies": {
-        "bootstrap": "^5.2.3"
+        "bootstrap": "^5.3.8"
     }
 }
